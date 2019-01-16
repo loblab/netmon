@@ -16,3 +16,5 @@ So it is good enough to set the sample cycle to 200μs.
 - build.sh: to build the program (from just one source file: netmon.cpp)
 - netmon.sh: an example to use the program. modify the options, run it, and you will get a CSV file
 - use any visulization tool to view the chart of the CSV file.
+- chart.ipynb: a script to draw the chart, run in python notebook with pandas
+
