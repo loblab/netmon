@@ -18,6 +18,7 @@
 #include <fstream>
 #include <list>
 #include <thread>
+#include <climits>
 #include <getopt.h>
 
 using namespace std;
@@ -27,6 +28,8 @@ typedef long long int TValue;
 typedef long long int TTime;
 typedef list<string> Strings;
 
+namespace NWM {
+
 int g_debug = 0;
 
 void trace(const char* msg)
@@ -34,6 +37,51 @@ void trace(const char* msg)
 	if (g_debug > 3)
 		cout << msg << endl;
 }
+
+typedef TValue (*TAggregator)(TValue* items, int count);
+
+TValue sum(TValue* items, int count)
+{
+	TValue s = 0;
+	for (int i = 0; i < count; i++)
+		s += items[i];
+	return s;
+}
+
+TValue avg(TValue* items, int count)
+{
+	return sum(items, count) / count;
+}
+
+TValue max(TValue* items, int count)
+{
+	TValue m = 0;
+	for (int i = 0; i < count; i++)
+		if (m < items[i])
+			m = items[i];
+	return m;
+}
+
+TValue min(TValue* items, int count)
+{
+	TValue m = LLONG_MAX;
+	for (int i = 0; i < count; i++)
+		if (m > items[i])
+			m = items[i];
+	return m;
+}
+
+TValue first(TValue* items, int count)
+{
+	return items[0];
+}
+
+TValue last(TValue* items, int count)
+{
+	return items[count - 1];
+}
+
+} // namespace NWM
 
 class Counter
 {
@@ -57,7 +105,7 @@ public:
 		m_name += field;
 		char path[128];
 		snprintf(path, sizeof path, PATH, nic.c_str(), field.c_str());
-		if (g_debug > 2)
+		if (NWM::g_debug > 2)
 			cout << "path: " << path << endl;
 		m_file.open(path);
 	}
@@ -110,6 +158,7 @@ private:
 	int m_cycle;
 	int m_duration;
 	int m_threshold;
+	NWM::TAggregator m_func;
 
 public:
 	Monitor()
@@ -153,25 +202,43 @@ public:
 
 	void setCycle(int cycle)
 	{
-		cout << "Cycle: " << cycle << "(µs)" << endl;
+		cout << "Sample cycle: " << cycle << "(µs)" << endl;
 		m_cycle = cycle;
 	}
 
 	void setDuration(int dur)
 	{
-		cout << "Duration: " << dur << "(µs)" << endl;
+		cout << "Sample duration: " << dur << "(µs)" << endl;
 		m_duration = dur;
 	}
 
-	void setThreshold(int th)
+	void setTrigger(int th, const string& func)
 	{
-		cout << "Threshold: " << th << endl;
+		cout << "Trigger function: " << func << endl;
+		cout << "Trigger threshold: " << th << endl;
 		m_threshold = th;
+		if (func == "min")
+			m_func = NWM::min;
+		else if (func == "max")
+			m_func = NWM::max;
+		else if (func == "sum")
+			m_func = NWM::sum;
+		else if (func == "avg")
+			m_func = NWM::avg;
+		else if (func == "first")
+			m_func = NWM::first;
+		else if (func == "last")
+			m_func = NWM::last;
+		else
+		{
+			cout << "Warning: unknown function: '" << func << "', use 'max' instead" << endl;
+			m_func = NWM::max;
+		}
 	}
 
 	void setOutput(const string& filepath)
 	{
-		cout << "Output: " << filepath << endl;
+		cout << "Output data file: " << filepath << endl;
 		m_ofs.open(filepath, ofstream::out);
 	}
 
@@ -216,12 +283,12 @@ public:
 		m_ofs << endl;
 	}
 
-	bool check_start(int threshold)
+	bool check_start()
 	{
 		if (m_start)
 			return true;
-		TValue activity = m_values[0];
-		if (activity > threshold)
+		TValue agr = m_func(m_values, m_counters.size());
+		if (agr > m_threshold)
 		{
 			m_start = true;
 			m_t1 = system_clock::now();
@@ -246,7 +313,7 @@ public:
 		while (!m_start || i < total)
 		{
 			sample();
-			if (check_start(m_threshold))
+			if (check_start())
 			{
 				report();
 				i++;
@@ -281,6 +348,7 @@ protected:
 		int cycle;
 		int duration;
 		int threshold;
+		string aggregator;
 		Strings counters;
 		Strings nics;
     } m_args;
@@ -312,7 +380,7 @@ protected:
 		}
 		m_monitor.setCycle(m_args.cycle);
 		m_monitor.setDuration(m_args.duration);
-		m_monitor.setThreshold(m_args.threshold);
+		m_monitor.setTrigger(m_args.threshold, m_args.aggregator);
 		m_monitor.setOutput(m_args.output);
 		return 0;
 	}
@@ -337,6 +405,7 @@ public:
 		m_args.cycle = 200;
 		m_args.duration = 1000000;
 		m_args.threshold = 1000;
+		m_args.aggregator = "max";
 	}
 
 	int main(int argc, char **argv)
@@ -344,7 +413,7 @@ public:
 		int rc = parseArguments(argc, argv);
 		if (rc)
 			return rc;
-		g_debug = m_args.debug;
+		NWM::g_debug = m_args.debug;
 		rc = init();
 		if (rc)
 			return rc;
@@ -367,7 +436,8 @@ const char* App::help_msg =
 	"    -l|--list        : list avaiable counters\n"
 	"    -c|--cycle     n : sample cycle, in microsecond\n"
 	"    -d|--duration  n : sample duration, in microsecond\n"
-	"    -t|--threshold n : trigger level, if nic1.counter1 > threshold, start recording\n"
+	"    -f|--function  s : trigger aggregator function, can be min, max, sum, arg, first, last\n"
+	"    -t|--threshold n : trigger level, if function(counters) > threshold, start recording\n"
 	"    -o|--output    s : output file, default: netmon.csv\n"
 	"    -n|--counter   s : add a counter. to add multiple: -c couter1 -c counter2\n"
 	"    -D|--debug     n : debug info level. default 0 for none, greater for more\n"
@@ -376,7 +446,7 @@ const char* App::help_msg =
 	"    network interface names\n"
 ;
 
-const char* App::short_options = "hvlac:d:D:t:o:n:";
+const char* App::short_options = "hvlac:d:D:t:o:n:f:";
 
 const struct option App::long_options[] =
 {
@@ -388,6 +458,7 @@ const struct option App::long_options[] =
 	{"cycle",    required_argument, 0, 'c'},
 	{"duration", required_argument, 0, 'd'},
 	{"threshold",required_argument, 0, 't'},
+	{"function", required_argument, 0, 'f'},
 	{"output",   required_argument, 0, 'o'},
 	{"counter",  required_argument, 0, 'n'},
 	{0, 0, 0, 0}
@@ -446,6 +517,10 @@ int App::parseArguments(int argc, char **argv)
 
 		case 'o':
 			m_args.output = optarg;
+			break;
+
+		case 'f':
+			m_args.aggregator = optarg;
 			break;
 
 		case 'n':

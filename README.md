@@ -7,9 +7,15 @@ So it is good enough to set the sample cycle to 200μs.
 
 - Platform: Linux (tested on Ubuntu 18/16)
 - Ver: 0.1
-- Updated: 1/16/2019
+- Updated: 1/19/2019
 - Created: 1/9/2019
 - Author: loblab
+
+## Features
+
+- monitor any counters Linux supported. e.g. rx/tx bytes, packets, drop, error
+- can set sample cycle/interval & total duration
+- support trigger: can set threshold & aggregating function
 
 ## Usage
 
