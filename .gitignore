@@ -5,3 +5,6 @@ image/
 
 *.o
 *.obj
+
+.*DS_Store
+

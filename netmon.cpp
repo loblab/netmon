@@ -441,7 +441,7 @@ const char* App::help_msg =
 	"    -o|--output    s : output file, default: netmon.csv\n"
 	"    -n|--counter   s : add a counter. to add multiple: -c couter1 -c counter2\n"
 	"    -D|--debug     n : debug info level. default 0 for none, greater for more\n"
-	"    -a|--absolute    : output absolute time. default relative timestamp, i.e. start from 0\n"
+	//"    -a|--absolute    : output absolute time. default relative timestamp, i.e. start from 0\n"
 	"nic1, nic2...:\n"
 	"    network interface names\n"
 ;
