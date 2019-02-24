@@ -436,7 +436,7 @@ const char* App::help_msg =
 	"    -l|--list        : list avaiable counters\n"
 	"    -c|--cycle     n : sample cycle, in microsecond\n"
 	"    -d|--duration  n : sample duration, in microsecond\n"
-	"    -f|--function  s : trigger aggregator function, can be min, max, sum, arg, first, last\n"
+	"    -f|--function  s : trigger aggregator function, can be min, max, sum, avg, first, last\n"
 	"    -t|--threshold n : trigger level, if function(counters) > threshold, start recording\n"
 	"    -o|--output    s : output file, default: netmon.csv\n"
 	"    -n|--counter   s : add a counter. to add multiple: -c couter1 -c counter2\n"

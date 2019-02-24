@@ -7,7 +7,8 @@ So it is good enough to set the sample cycle to 400μs.
 
 - Platform: Linux (tested on Ubuntu 18/16)
 - Ver: 0.1
-- Updated: 1/20/2019
+- Ref: [Technical details (Chinese)](https://www.jianshu.com/p/3dcd14c58cbf)
+- Updated: 2/24/2019
 - Created: 1/9/2019
 - Author: loblab
 
